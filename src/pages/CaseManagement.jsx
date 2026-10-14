@@ -1,18 +1,112 @@
 import { useState, useRef } from 'react'
-import { X, Upload, FileText, Download } from 'lucide-react'
+import { X, Upload, FileText, Download, Plus, Trash2 } from 'lucide-react'
 
-const INSTALLMENT_FIELDS = [
-  { field: 'loan_number', label: 'Loan account number', required: true },
-  { field: 'customer_name', label: 'Borrower name', required: true },
-  { field: 'amount_pending', label: 'Amount pending (₹)', required: true },
-  { field: 'due_date', label: 'Due date', required: true },
-  { field: 'mobile_number', label: 'Mobile number', required: true },
-  { field: 'primary_address', label: 'Primary address', required: false },
-  { field: 'city', label: 'City', required: false },
-  { field: 'pin_code', label: 'PIN code', required: false },
-  { field: 'gender', label: 'Gender', required: false },
-  { field: 'pan', label: 'PAN', required: false },
+const COLUMNS = [
+  'loan_number', 'customer_name', 'amount_pending', 'due_date',
+  'mobile_number', 'dpd_bucket', 'status', 'customer_state',
+  'city', 'pin_code', 'gender', 'primary_address', 'pan',
 ]
+
+const OPERATORS = {
+  text:   ['equals', 'not_equals', 'contains', 'is_empty', 'is_not_empty'],
+  number: ['equals', 'not_equals', 'greater_than', 'greater_than_or_equals', 'less_than', 'less_than_or_equals', 'is_empty', 'is_not_empty'],
+  date:   ['equals', 'greater_than_or_equals', 'less_than_or_equals', 'is_empty', 'is_not_empty'],
+}
+
+const COL_TYPE = {
+  amount_pending: 'number', dpd_bucket: 'number',
+  due_date: 'date',
+}
+
+const needsValue = (op) => !['is_empty', 'is_not_empty'].includes(op)
+
+let nextId = 4
+const DEFAULT_FILTERS = [
+  { id: 1, column: 'dpd_bucket', operator: 'greater_than_or_equals', value: '3' },
+  { id: 2, column: 'mobile_number', operator: 'is_not_empty', value: '' },
+  { id: 3, column: 'status', operator: 'not_equals', value: 'CLOSED' },
+]
+
+function FilterBuilder({ filters, setFilters, logic, setLogic }) {
+  const addRow = () => {
+    setFilters(f => [...f, { id: nextId++, column: 'loan_number', operator: 'is_not_empty', value: '' }])
+  }
+  const removeRow = (id) => setFilters(f => f.filter(r => r.id !== id))
+  const update = (id, key, val) => setFilters(f => f.map(r => r.id === id ? { ...r, [key]: val, ...(key === 'column' ? { operator: 'equals', value: '' } : {}) } : r))
+
+  const selectStyle = (w) => ({
+    border: '1px solid #c5c8d6', borderRadius: 6, padding: '10px 10px 6px',
+    fontSize: 13, color: '#12012f', background: 'white',
+    width: w || '100%', cursor: 'pointer', outline: 'none', appearance: 'none',
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6580' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
+    backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center',
+    paddingRight: 28,
+  })
+
+  const floatLabel = { fontSize: 10, color: '#6b6580', position: 'absolute', top: 4, left: 10, pointerEvents: 'none', fontWeight: 500, letterSpacing: '0.03em' }
+
+  return (
+    <div style={{ background: '#dde8f5', borderRadius: 10, border: '1px solid #b8cfe8', padding: 12 }}>
+      {/* AND / OR */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
+        {['AND', 'OR'].map(l => (
+          <button key={l} onClick={() => setLogic(l)}
+            style={{ padding: '3px 12px', borderRadius: 4, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
+              background: logic === l ? '#12012f' : 'transparent', color: logic === l ? 'white' : '#6b6580' }}>
+            {l}
+          </button>
+        ))}
+        <button onClick={addRow} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', color: '#675af9', fontSize: 12, fontWeight: 600 }}>
+          <Plus size={13} /> Add filter
+        </button>
+      </div>
+
+      {/* Rows */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {filters.map(row => {
+          const colType = COL_TYPE[row.column] || 'text'
+          const ops = OPERATORS[colType]
+          const showValue = needsValue(row.operator)
+          return (
+            <div key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', borderRadius: 8, padding: '4px 10px 4px 10px', border: '1px solid #c5c8d6' }}>
+              {/* Column */}
+              <div style={{ position: 'relative', flex: '0 0 260px' }}>
+                <span style={floatLabel}>column</span>
+                <select value={row.column} onChange={e => update(row.id, 'column', e.target.value)} style={selectStyle()}>
+                  {COLUMNS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              {/* Operator */}
+              <div style={{ position: 'relative', flex: '0 0 200px' }}>
+                <span style={floatLabel}>Operator</span>
+                <select value={row.operator} onChange={e => update(row.id, 'operator', e.target.value)} style={selectStyle()}>
+                  {ops.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+
+              {/* Value */}
+              {showValue && (
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <span style={floatLabel}>Value</span>
+                  <input value={row.value} onChange={e => update(row.id, 'value', e.target.value)}
+                    style={{ border: '1px solid #c5c8d6', borderRadius: 6, padding: '10px 10px 6px', fontSize: 13, color: '#12012f', width: '100%', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              )}
+              {!showValue && <div style={{ flex: 1 }} />}
+
+              {/* Delete */}
+              <button onClick={() => removeRow(row.id)}
+                style={{ background: '#12012f', border: 'none', borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                <Trash2 size={12} color="white" />
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 const CASES = [
   { id: 'L-8821', name: 'Ramesh K.', cycle: 'SEP2026', channel: 'Digital', status: 'Read', statusStyle: { background: '#e6faf5', color: '#059669' }, date: '2 Oct 2026', canRetry: false },
@@ -63,10 +157,14 @@ const Chip = ({ children, style }) => (
 export default function CaseManagement() {
   const [drawer, setDrawer] = useState(null)
   const [modal, setModal] = useState(false)
-  const [caseSource, setCaseSource] = useState('portfolio') // 'portfolio' | 'csv'
+  const [caseSource, setCaseSource] = useState('portfolio')
   const [csvFile, setCsvFile] = useState(null)
   const [csvDragging, setCsvDragging] = useState(false)
+  const [filters, setFilters] = useState(DEFAULT_FILTERS)
+  const [filterLogic, setFilterLogic] = useState('AND')
   const fileInputRef = useRef(null)
+
+  const closeModal = () => { setModal(false); setCsvFile(null); setCaseSource('portfolio'); setFilters(DEFAULT_FILTERS); setFilterLogic('AND') }
 
   const handleFileDrop = (e) => {
     e.preventDefault()
@@ -181,13 +279,13 @@ export default function CaseManagement() {
 
       {/* Create batch modal */}
       {modal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(18,1,47,0.2)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => { setModal(false); setCsvFile(null); setCaseSource('portfolio') }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(18,1,47,0.2)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={closeModal}>
           <div style={{ background: 'white', borderRadius: 14, boxShadow: '0 8px 40px rgba(18,1,47,0.15)', width: 700, maxHeight: '90vh', overflowY: 'auto', border: '1px solid #e6e4ef' }} onClick={e => e.stopPropagation()}>
 
             {/* Header */}
             <div style={{ padding: '16px 22px', borderBottom: '1px solid #e6e4ef', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
               <span style={{ fontWeight: 700, fontSize: 15 }}>Create legal notice batch</span>
-              <button onClick={() => { setModal(false); setCsvFile(null); setCaseSource('portfolio') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b6580', display: 'flex' }}><X size={18} /></button>
+              <button onClick={closeModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b6580', display: 'flex' }}><X size={18} /></button>
             </div>
 
             <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -217,26 +315,19 @@ export default function CaseManagement() {
                 </div>
               </div>
 
-              {/* Portfolio source */}
+              {/* Portfolio source — filter builder */}
               {caseSource === 'portfolio' && (
-                <div style={{ background: '#fafaff', border: '1px solid #e6e4ef', borderRadius: 12, padding: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6b6580', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Case summary</div>
-                  {[['Cases selected', '1,247', '#12012f', false], ['✓ Eligible', '1,183', '#059669', true], ['✗ On DNC', '42', '#6b6580', false], ['✗ Already noticed this cycle', '22', '#6b6580', false]].map(([l, v, c, bold]) => (
-                    <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', fontSize: 13, color: c, borderBottom: '1px dashed #e6e4ef' }}>
-                      <span style={{ fontWeight: bold ? 600 : 400 }}>{l}</span>
-                      <span style={{ fontWeight: 700 }}>{v}</span>
-                    </div>
-                  ))}
-                  <div style={{ marginTop: 12 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6b6580', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Fields pulled from installments</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {INSTALLMENT_FIELDS.map(f => (
-                        <span key={f.field} style={{ background: f.required ? '#f1f0ff' : '#f5f4f9', color: f.required ? '#675af9' : '#6b6580', fontSize: 11, padding: '3px 9px', borderRadius: 999, fontWeight: 500, border: f.required ? '1px solid #d4cffc' : '1px solid #e6e4ef' }}>
-                          {f.field}{f.required ? ' *' : ''}
-                        </span>
-                      ))}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#a5a1b3', marginTop: 8 }}>* Required fields for notice generation</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <FilterBuilder filters={filters} setFilters={setFilters} logic={filterLogic} setLogic={setFilterLogic} />
+                  {/* Case summary after filters */}
+                  <div style={{ background: '#fafaff', border: '1px solid #e6e4ef', borderRadius: 10, padding: '12px 16px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#6b6580', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Case summary</div>
+                    {[['Cases selected', '1,247', '#12012f', false], ['✓ Eligible', '1,183', '#059669', true], ['✗ On DNC', '42', '#6b6580', false], ['✗ Already noticed this cycle', '22', '#6b6580', false]].map(([l, v, c, bold]) => (
+                      <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', fontSize: 13, color: c, borderBottom: '1px dashed #e6e4ef' }}>
+                        <span style={{ fontWeight: bold ? 600 : 400 }}>{l}</span>
+                        <span style={{ fontWeight: 700 }}>{v}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -305,7 +396,7 @@ export default function CaseManagement() {
 
             {/* Footer */}
             <div style={{ padding: '14px 22px', borderTop: '1px solid #e6e4ef', display: 'flex', justifyContent: 'flex-end', gap: 8, position: 'sticky', bottom: 0, background: 'white' }}>
-              <button onClick={() => { setModal(false); setCsvFile(null); setCaseSource('portfolio') }} style={{ background: '#f0eef7', color: '#332b46', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={closeModal} style={{ background: '#f0eef7', color: '#332b46', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
               <button style={{ background: caseSource === 'csv' && !csvFile ? '#d4cffc' : '#675af9', color: 'white', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: caseSource === 'csv' && !csvFile ? 'not-allowed' : 'pointer' }}>
                 Create batch →
               </button>
