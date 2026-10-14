@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 const stats = [
   { label: 'Notices sent this cycle', value: '2,366', sub: 'Sep 2026', highlight: true },
   { label: 'Delivered', value: '1,724', color: '#059669', sub: '73% delivery rate' },
@@ -5,25 +7,47 @@ const stats = [
   { label: 'Not delivered', value: '12', color: '#fb4d3d', sub: 'Returned / failed' },
 ]
 
-const funnel = [
-  { label: 'Cases picked', count: '2,494', pct: 100 },
-  { label: 'Legodesk accepted', count: '2,366', pct: 95 },
-  { label: 'Notices generated', count: '2,366', pct: 95 },
-  { label: 'Dispatched', count: '2,354', pct: 94 },
-  { label: 'Delivered', count: '1,724', pct: 69, color: '#08ca97' },
-  { label: 'Not delivered', count: '12', pct: 1, color: '#fb4d3d' },
-]
+const FUNNEL = {
+  all: [
+    { stage: 'Cases picked',        count: 2494, color: '#675af9' },
+    { stage: 'Legodesk accepted',   count: 2366, color: '#675af9' },
+    { stage: 'Generated',           count: 2366, color: '#675af9' },
+    { stage: 'Dispatched',          count: 2354, color: '#675af9' },
+    { stage: 'Delivered',           count: 1724, color: '#08ca97' },
+    { stage: 'Read',                count: 743,  color: '#059669' },
+    { stage: 'Not delivered',       count: 12,   color: '#fb4d3d' },
+  ],
+  physical: [
+    { stage: 'Cases picked',           count: 1247, color: '#675af9' },
+    { stage: 'Legodesk accepted',      count: 1183, color: '#675af9' },
+    { stage: 'Generated',              count: 1183, color: '#675af9' },
+    { stage: 'Dispatched (Speed Post)', count: 1183, color: '#675af9' },
+    { stage: 'Delivered',              count: 743,  color: '#08ca97' },
+    { stage: 'Not delivered',          count: 12,   color: '#fb4d3d' },
+  ],
+  whatsapp: [
+    { stage: 'Cases picked',  count: 1183, color: '#675af9' },
+    { stage: 'Generated',     count: 1183, color: '#675af9' },
+    { stage: 'Sent',          count: 1183, color: '#675af9' },
+    { stage: 'Delivered',     count: 981,  color: '#08ca97' },
+    { stage: 'Read',          count: 743,  color: '#059669' },
+    { stage: 'Not delivered', count: 42,   color: '#fb4d3d' },
+  ],
+  sms:   null,
+  email: null,
+}
 
-const activity = [
-  { dot: '#08ca97', title: 'Acre — Sep 2026 · Physical batch closed', meta: '743 delivered · 12 not delivered · 2 Oct 2026' },
-  { dot: '#675af9', title: 'Acre — Sep 2026 · Digital campaign dispatched', meta: '981 sent via WhatsApp · 1 Oct 2026' },
-  { dot: '#ff9b25', title: 'Slice — Sep 2026 · Notices generating', meta: '604 of 1,183 generated · in progress' },
-  { dot: '#a5a1b3', title: 'New template approved', meta: 'Section 138 — Hindi v1 · legal@acre.in' },
+const CHANNELS = [
+  { id: 'all',      label: 'All' },
+  { id: 'physical', label: 'Physical (Post)' },
+  { id: 'whatsapp', label: 'WhatsApp' },
+  { id: 'sms',      label: 'SMS' },
+  { id: 'email',    label: 'Email' },
 ]
 
 const batches = [
   { cycle: 'SEPTEMBER2026', channel: 'Physical', state: 'Dispatched', stateStyle: { background: '#e6faf5', color: '#059669' }, cases: '1,183', delivered: '743' },
-  { cycle: 'SEPTEMBER2026', channel: 'Digital', state: 'Dispatched', stateStyle: { background: '#e6faf5', color: '#059669' }, cases: '1,183', delivered: '981' },
+  { cycle: 'SEPTEMBER2026', channel: 'Digital',  state: 'Dispatched', stateStyle: { background: '#e6faf5', color: '#059669' }, cases: '1,183', delivered: '981' },
   { cycle: 'SEPTEMBER2026', channel: 'Physical', state: 'Generating', stateStyle: { background: '#fff4e5', color: '#d97706' }, cases: '1,183', delivered: '—' },
 ]
 
@@ -32,11 +56,15 @@ const th = { fontSize: 11, color: '#6b6580', textTransform: 'uppercase', letterS
 const td = { padding: '11px 16px', borderBottom: '1px solid #e6e4ef', fontSize: 13 }
 
 export default function Home() {
-  return (
-    <div style={{ padding: '32px', maxWidth: 1000 }}>
+  const [channel, setChannel] = useState('all')
+  const data = FUNNEL[channel]
+  const max = data ? data[0].count : 0
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
+  return (
+    <div style={{ padding: '32px', maxWidth: 960 }}>
+
+      {/* Stat cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
         {stats.map(s => (
           <div key={s.label} style={{ ...card, padding: '18px 20px', borderColor: s.highlight ? '#675af9' : '#e6e4ef', background: s.highlight ? '#f1f0ff' : 'white' }}>
             <div style={{ fontSize: 12, color: '#6b6580', marginBottom: 6 }}>{s.label}</div>
@@ -46,39 +74,79 @@ export default function Home() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-
-        {/* Funnel */}
-        <div style={card}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid #e6e4ef', fontWeight: 600, fontSize: 14 }}>Overall funnel — Sep 2026</div>
-          <div style={{ padding: '16px 18px' }}>
-            {funnel.map(f => (
-              <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 10, marginBottom: 10, borderBottom: '1px dashed #e6e4ef' }}>
-                <span style={{ width: 150, fontSize: 12, color: '#6b6580', flexShrink: 0 }}>{f.label}</span>
-                <span style={{ width: 50, fontSize: 13, fontWeight: 600, flexShrink: 0 }}>{f.count}</span>
-                <div style={{ flex: 1, height: 7, background: '#e6e4ef', borderRadius: 4 }}>
-                  <div style={{ width: `${f.pct}%`, height: 7, borderRadius: 4, background: f.color || '#675af9', transition: 'width 0.3s' }} />
-                </div>
-                <span style={{ width: 36, textAlign: 'right', fontSize: 11, color: '#6b6580' }}>{f.pct}%</span>
-              </div>
+      {/* Funnel card */}
+      <div style={{ ...card, marginBottom: 24 }}>
+        {/* Header + channel filter */}
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid #e6e4ef', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 600, fontSize: 14 }}>Delivery funnel — Sep 2026</span>
+          <div style={{ display: 'flex', gap: 4, marginLeft: 'auto', background: '#f0eef7', borderRadius: 8, padding: 3 }}>
+            {CHANNELS.map(c => (
+              <button key={c.id} onClick={() => setChannel(c.id)}
+                style={{
+                  padding: '5px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                  fontSize: 12, fontWeight: channel === c.id ? 600 : 400,
+                  background: channel === c.id ? '#675af9' : 'transparent',
+                  color: channel === c.id ? 'white' : '#6b6580',
+                  transition: 'all 0.15s',
+                }}>
+                {c.label}
+              </button>
             ))}
           </div>
         </div>
 
-        {/* Activity */}
-        <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid #e6e4ef', fontWeight: 600, fontSize: 14 }}>Recent activity</div>
-          <div style={{ flex: 1 }}>
-            {activity.map((a, i) => (
-              <div key={i} style={{ display: 'flex', gap: 12, padding: '13px 18px', borderBottom: i < activity.length - 1 ? '1px dashed #e6e4ef' : 'none' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.dot, flexShrink: 0, marginTop: 5 }} />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{a.title}</div>
-                  <div style={{ fontSize: 12, color: '#6b6580', marginTop: 2 }}>{a.meta}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* Funnel body */}
+        <div style={{ padding: '28px 40px' }}>
+          {!data ? (
+            <div style={{ textAlign: 'center', padding: '48px 0', color: '#a5a1b3' }}>
+              <div style={{ fontSize: 32, marginBottom: 10 }}>—</div>
+              <div style={{ fontSize: 14 }}>No notices sent via this channel in Sep 2026</div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+              {data.map((row, i) => {
+                const pct = Math.round((row.count / max) * 100)
+                const barW = Math.max((row.count / max) * 100, 8)
+                const dropOff = i > 0 ? data[i - 1].count - row.count : null
+                const dropPct = i > 0 ? Math.round((dropOff / data[i - 1].count) * 100) : null
+
+                return (
+                  <div key={row.stage} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    {/* Drop-off connector */}
+                    {dropOff !== null && dropOff > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '3px 0', color: '#a5a1b3', fontSize: 11 }}>
+                        <div style={{ width: 1, height: 14, background: '#e6e4ef' }} />
+                        <span style={{ color: '#fb4d3d', fontWeight: 500 }}>−{dropOff.toLocaleString()} ({dropPct}% drop)</span>
+                      </div>
+                    )}
+                    {dropOff === null && i === 0 && <div style={{ height: 0 }} />}
+                    {dropOff === 0 && <div style={{ width: 1, height: 8, background: '#e6e4ef', margin: '3px 0' }} />}
+
+                    {/* Bar */}
+                    <div style={{ width: `${barW}%`, transition: 'width 0.4s ease', position: 'relative' }}>
+                      {/* Trapezoid via clip-path */}
+                      <div style={{
+                        background: row.color,
+                        opacity: row.stage === 'Not delivered' ? 1 : 0.85 + (i * 0.02),
+                        borderRadius: 6,
+                        padding: '10px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        minWidth: 120,
+                      }}>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: 'white', whiteSpace: 'nowrap' }}>{row.stage}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: 'white' }}>{row.count.toLocaleString()}</span>
+                          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', minWidth: 34, textAlign: 'right' }}>{pct}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 
