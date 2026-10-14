@@ -1,4 +1,58 @@
 import { useState } from 'react'
+import { X } from 'lucide-react'
+
+const BATCH_DETAIL = {
+  0: {
+    cycle: 'SEPTEMBER2026', channel: 'Physical', state: 'Dispatched',
+    template: 'Section 138 — NACH bounce v2', created: '30 Sep 2026 · Aditya R.',
+    funnel: [
+      { stage: 'Cases picked',           count: 1247 },
+      { stage: 'Legodesk accepted',      count: 1183 },
+      { stage: 'Generated',              count: 1183 },
+      { stage: 'Dispatched (Speed Post)', count: 1183 },
+      { stage: 'Delivered',              count: 743,  color: '#08ca97' },
+      { stage: 'Not delivered',          count: 12,   color: '#fb4d3d' },
+    ],
+    cases: [
+      { id: 'L-8821', name: 'Ramesh K.', state: 'Delivered',     stateStyle: { background: '#e6faf5', color: '#059669' }, lastEvent: '2 Oct · Legodesk' },
+      { id: 'L-8822', name: 'Priya S.',  state: 'Delivered',     stateStyle: { background: '#e6faf5', color: '#059669' }, lastEvent: '1 Oct · Legodesk' },
+      { id: 'L-8823', name: 'Sanjay M.', state: 'Dispatched',    stateStyle: { background: '#f0eef7', color: '#332b46' }, lastEvent: '30 Sep · Legodesk' },
+      { id: 'L-8824', name: 'Anjali P.', state: 'Not delivered', stateStyle: { background: '#ffedec', color: '#fb4d3d' }, lastEvent: '29 Sep · returned', retry: true },
+    ],
+  },
+  1: {
+    cycle: 'SEPTEMBER2026', channel: 'Digital (WhatsApp)', state: 'Dispatched',
+    template: 'Section 138 — WA carrier v1', created: '1 Oct 2026 · Rohit M.',
+    funnel: [
+      { stage: 'Cases picked', count: 1183 },
+      { stage: 'Generated',    count: 1183 },
+      { stage: 'Sent',         count: 1183 },
+      { stage: 'Delivered',    count: 981, color: '#08ca97' },
+      { stage: 'Read',         count: 743, color: '#059669' },
+      { stage: 'Not delivered', count: 42, color: '#fb4d3d' },
+    ],
+    cases: [
+      { id: 'L-8821', name: 'Ramesh K.', state: 'Read',          stateStyle: { background: '#e6faf5', color: '#059669' }, lastEvent: '2 Oct · WhatsApp' },
+      { id: 'L-8822', name: 'Priya S.',  state: 'Delivered',     stateStyle: { background: '#e6faf5', color: '#059669' }, lastEvent: '1 Oct · WhatsApp' },
+      { id: 'L-9010', name: 'Vikram T.', state: 'Not delivered', stateStyle: { background: '#ffedec', color: '#fb4d3d' }, lastEvent: '1 Oct · failed', retry: true },
+    ],
+  },
+  2: {
+    cycle: 'SEPTEMBER2026', channel: 'Physical', state: 'Generating',
+    template: 'Section 138 — NACH bounce v2', created: '14 Oct 2026 · Aditya R.',
+    funnel: [
+      { stage: 'Cases picked',      count: 1183 },
+      { stage: 'Legodesk accepted', count: 1183 },
+      { stage: 'Generated',         count: 604,  color: '#ff9b25' },
+      { stage: 'Pending generation', count: 579, color: '#a5a1b3' },
+    ],
+    cases: [
+      { id: 'L-9100', name: 'Kiran B.',  state: 'Generated', stateStyle: { background: '#fff4e5', color: '#d97706' }, lastEvent: '14 Oct · Legodesk' },
+      { id: 'L-9101', name: 'Meena S.',  state: 'Generated', stateStyle: { background: '#fff4e5', color: '#d97706' }, lastEvent: '14 Oct · Legodesk' },
+      { id: 'L-9102', name: 'Arjun P.',  state: 'Pending',   stateStyle: { background: '#f0eef7', color: '#6b6580' }, lastEvent: '—' },
+    ],
+  },
+}
 
 const stats = [
   { label: 'Notices sent this cycle', value: '2,366', sub: 'Sep 2026', highlight: true },
@@ -57,8 +111,10 @@ const td = { padding: '11px 16px', borderBottom: '1px solid #e6e4ef', fontSize: 
 
 export default function Home() {
   const [channel, setChannel] = useState('all')
+  const [selectedBatch, setSelectedBatch] = useState(null)
   const data = FUNNEL[channel]
   const max = data ? data[0].count : 0
+  const detail = selectedBatch !== null ? BATCH_DETAIL[selectedBatch] : null
 
   return (
     <div style={{ padding: '32px', maxWidth: 960 }}>
@@ -152,35 +208,119 @@ export default function Home() {
 
       {/* Active batches */}
       <div style={card}>
-        <div style={{ padding: '14px 18px', borderBottom: '1px solid #e6e4ef', display: 'flex', alignItems: 'center' }}>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid #e6e4ef' }}>
           <span style={{ fontWeight: 600, fontSize: 14 }}>Active batches</span>
-          <button style={{ marginLeft: 'auto', background: '#675af9', color: 'white', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-            + Create new batch
-          </button>
         </div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {['Cycle', 'Channel', 'State', 'Cases', 'Delivered', ''].map(h => <th key={h} style={th}>{h}</th>)}
+              {['Cycle', 'Channel', 'State', 'Cases', 'Delivered'].map(h => <th key={h} style={th}>{h}</th>)}
             </tr>
           </thead>
           <tbody>
             {batches.map((b, i) => (
-              <tr key={i} style={{ background: 'white' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#fafaff'}
-                onMouseLeave={e => e.currentTarget.style.background = 'white'}
+              <tr key={i}
+                onClick={() => setSelectedBatch(i)}
+                style={{ background: selectedBatch === i ? '#f1f0ff' : 'white', cursor: 'pointer', transition: 'background 0.1s' }}
+                onMouseEnter={e => { if (selectedBatch !== i) e.currentTarget.style.background = '#fafaff' }}
+                onMouseLeave={e => { e.currentTarget.style.background = selectedBatch === i ? '#f1f0ff' : 'white' }}
               >
-                <td style={td}><code style={{ background: '#f5f4f9', padding: '2px 7px', borderRadius: 4, fontSize: 11 }}>{b.cycle}</code></td>
-                <td style={td}><span style={{ background: '#f0eef7', color: '#332b46', fontSize: 11, padding: '3px 10px', borderRadius: 999, fontWeight: 500 }}>{b.channel}</span></td>
-                <td style={td}><span style={{ ...b.stateStyle, fontSize: 11, padding: '3px 10px', borderRadius: 999, fontWeight: 500 }}>{b.state}</span></td>
-                <td style={td}>{b.cases}</td>
-                <td style={td}>{b.delivered}</td>
-                <td style={{ ...td, color: '#675af9', fontSize: 12, fontWeight: 500, cursor: 'pointer', borderBottom: i === batches.length - 1 ? 'none' : '1px solid #e6e4ef' }}>View →</td>
+                <td style={{ ...td, borderBottom: i === batches.length - 1 ? 'none' : '1px solid #e6e4ef' }}>
+                  <code style={{ background: '#f5f4f9', padding: '2px 7px', borderRadius: 4, fontSize: 11 }}>{b.cycle}</code>
+                </td>
+                <td style={{ ...td, borderBottom: i === batches.length - 1 ? 'none' : '1px solid #e6e4ef' }}>
+                  <span style={{ background: '#f0eef7', color: '#332b46', fontSize: 11, padding: '3px 10px', borderRadius: 999, fontWeight: 500 }}>{b.channel}</span>
+                </td>
+                <td style={{ ...td, borderBottom: i === batches.length - 1 ? 'none' : '1px solid #e6e4ef' }}>
+                  <span style={{ ...b.stateStyle, fontSize: 11, padding: '3px 10px', borderRadius: 999, fontWeight: 500 }}>{b.state}</span>
+                </td>
+                <td style={{ ...td, borderBottom: i === batches.length - 1 ? 'none' : '1px solid #e6e4ef' }}>{b.cases}</td>
+                <td style={{ ...td, borderBottom: i === batches.length - 1 ? 'none' : '1px solid #e6e4ef' }}>{b.delivered}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Batch detail drawer */}
+      {detail && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 30 }} onClick={() => setSelectedBatch(null)} />
+          <div style={{ position: 'fixed', top: 0, right: 0, height: '100%', width: 520, background: 'white', boxShadow: '-4px 0 32px rgba(18,1,47,0.12)', borderLeft: '1px solid #e6e4ef', zIndex: 40, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+
+            {/* Drawer header */}
+            <div style={{ padding: '16px 22px', borderBottom: '1px solid #e6e4ef', background: '#f1f0ff', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>{detail.cycle} · {detail.channel}</div>
+                <div style={{ fontSize: 12, color: '#6b6580', marginTop: 4 }}>
+                  Template: {detail.template} &nbsp;·&nbsp; Created: {detail.created}
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 999, fontWeight: 500, background: detail.state === 'Dispatched' ? '#e6faf5' : '#fff4e5', color: detail.state === 'Dispatched' ? '#059669' : '#d97706' }}>
+                    {detail.state}
+                  </span>
+                </div>
+              </div>
+              <button onClick={() => setSelectedBatch(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b6580', display: 'flex', flexShrink: 0 }}><X size={18} /></button>
+            </div>
+
+            {/* Funnel */}
+            <div style={{ padding: '20px 22px', borderBottom: '1px solid #e6e4ef' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6b6580', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>Funnel</div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+                {detail.funnel.map((row, i) => {
+                  const pct = Math.round((row.count / detail.funnel[0].count) * 100)
+                  const barW = Math.max(pct, 10)
+                  const prev = detail.funnel[i - 1]
+                  const dropOff = prev ? prev.count - row.count : null
+                  return (
+                    <div key={row.stage} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      {dropOff !== null && dropOff > 0 && (
+                        <div style={{ fontSize: 11, color: '#fb4d3d', margin: '3px 0', fontWeight: 500 }}>
+                          ↓ −{dropOff.toLocaleString()} ({Math.round((dropOff / prev.count) * 100)}% drop)
+                        </div>
+                      )}
+                      {(dropOff === null || dropOff === 0) && i > 0 && <div style={{ width: 1, height: 8, background: '#e6e4ef', margin: '3px 0' }} />}
+                      <div style={{ width: `${barW}%`, background: row.color || '#675af9', borderRadius: 6, padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 120 }}>
+                        <span style={{ fontSize: 12, fontWeight: 500, color: 'white' }}>{row.stage}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'white' }}>{row.count.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Cases table */}
+            <div style={{ padding: '20px 22px', flex: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#6b6580', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Cases</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    {['Loan ID', 'Borrower', 'State', 'Last event', ''].map(h => (
+                      <th key={h} style={{ fontSize: 11, color: '#6b6580', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, padding: '8px 10px', borderBottom: '1px solid #e6e4ef', textAlign: 'left' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {detail.cases.map((c, i) => (
+                    <tr key={c.id} style={{ borderBottom: i === detail.cases.length - 1 ? 'none' : '1px solid #e6e4ef' }}>
+                      <td style={{ padding: '9px 10px' }}><code style={{ background: '#f5f4f9', padding: '1px 6px', borderRadius: 4, fontSize: 11 }}>{c.id}</code></td>
+                      <td style={{ padding: '9px 10px', fontWeight: 500 }}>{c.name}</td>
+                      <td style={{ padding: '9px 10px' }}><span style={{ ...c.stateStyle, fontSize: 11, padding: '2px 8px', borderRadius: 999, fontWeight: 500 }}>{c.state}</span></td>
+                      <td style={{ padding: '9px 10px', fontSize: 12, color: '#6b6580' }}>{c.lastEvent}</td>
+                      <td style={{ padding: '9px 10px' }}>
+                        {c.retry && <span style={{ fontSize: 11, color: '#fb4d3d', fontWeight: 600, cursor: 'pointer' }}>Retry</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </>
+      )}
     </div>
   )
 }
