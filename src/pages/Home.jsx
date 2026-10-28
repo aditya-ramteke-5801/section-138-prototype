@@ -62,37 +62,42 @@ const stats = [
 ]
 
 const FUNNEL = {
-  all: [
-    { stage: 'Cases picked',        count: 2494, color: '#675af9' },
-    { stage: 'Legodesk accepted',   count: 2366, color: '#675af9' },
-    { stage: 'Generated',           count: 2366, color: '#675af9' },
-    { stage: 'Dispatched',          count: 2354, color: '#675af9' },
-    { stage: 'Delivered',           count: 1724, color: '#08ca97' },
-    { stage: 'Read',                count: 743,  color: '#059669' },
-    { stage: 'Not delivered',       count: 12,   color: '#fb4d3d' },
-  ],
   physical: [
-    { stage: 'Cases picked',           count: 1247, color: '#675af9' },
-    { stage: 'Legodesk accepted',      count: 1183, color: '#675af9' },
-    { stage: 'Generated',              count: 1183, color: '#675af9' },
-    { stage: 'Dispatched (Speed Post)', count: 1183, color: '#675af9' },
-    { stage: 'Delivered',              count: 743,  color: '#08ca97' },
-    { stage: 'Not delivered',          count: 12,   color: '#fb4d3d' },
+    { stage: 'Uploaded to Legodesk',    count: 1247, type: 'neutral' },
+    { stage: 'Notice generated',        count: 1183, type: 'neutral' },
+    { stage: 'Dispatched (Speed Post)', count: 1183, type: 'neutral' },
+    { stage: 'Delivered',               count: 743,  type: 'success' },
+    { stage: 'Returned / Undelivered',  count: 12,   type: 'error'   },
   ],
   whatsapp: [
-    { stage: 'Cases picked',  count: 1183, color: '#675af9' },
-    { stage: 'Generated',     count: 1183, color: '#675af9' },
-    { stage: 'Sent',          count: 1183, color: '#675af9' },
-    { stage: 'Delivered',     count: 981,  color: '#08ca97' },
-    { stage: 'Read',          count: 743,  color: '#059669' },
-    { stage: 'Not delivered', count: 42,   color: '#fb4d3d' },
+    { stage: 'Uploaded to Legodesk', count: 1183, type: 'neutral' },
+    { stage: 'Notice generated',     count: 1183, type: 'neutral' },
+    { stage: 'Sent',                 count: 1183, type: 'neutral' },
+    { stage: 'Delivered',            count: 981,  type: 'success' },
+    { stage: 'Read',                 count: 743,  type: 'success' },
+    { stage: 'Link clicked',         count: 418,  type: 'success' },
+    { stage: 'Failed',               count: 42,   type: 'error'   },
   ],
-  sms:   null,
-  email: null,
+  sms: [
+    { stage: 'Uploaded to Legodesk', count: 890, type: 'neutral' },
+    { stage: 'Notice generated',     count: 890, type: 'neutral' },
+    { stage: 'Sent',                 count: 882, type: 'neutral' },
+    { stage: 'Delivered',            count: 751, type: 'success' },
+    { stage: 'Link clicked',         count: 312, type: 'success' },
+    { stage: 'Failed',               count: 131, type: 'error'   },
+  ],
+  email: [
+    { stage: 'Uploaded to Legodesk', count: 540, type: 'neutral' },
+    { stage: 'Notice generated',     count: 540, type: 'neutral' },
+    { stage: 'Sent',                 count: 538, type: 'neutral' },
+    { stage: 'Delivered',            count: 412, type: 'success' },
+    { stage: 'Opened',               count: 287, type: 'success' },
+    { stage: 'Link clicked',         count: 183, type: 'success' },
+    { stage: 'Bounced',              count: 126, type: 'error'   },
+  ],
 }
 
 const CHANNELS = [
-  { id: 'all',      label: 'All' },
   { id: 'physical', label: 'Physical (Post)' },
   { id: 'whatsapp', label: 'WhatsApp' },
   { id: 'sms',      label: 'SMS' },
@@ -110,10 +115,10 @@ const th = { fontSize: 11, color: '#6b6580', textTransform: 'uppercase', letterS
 const td = { padding: '11px 16px', borderBottom: '1px solid #e6e4ef', fontSize: 13 }
 
 export default function Home() {
-  const [channel, setChannel] = useState('all')
+  const [channel, setChannel] = useState('physical')
   const [selectedBatch, setSelectedBatch] = useState(null)
   const data = FUNNEL[channel]
-  const max = data ? data[0].count : 0
+  const max = data[0].count
   const detail = selectedBatch !== null ? BATCH_DETAIL[selectedBatch] : null
 
   return (
@@ -152,57 +157,58 @@ export default function Home() {
         </div>
 
         {/* Funnel body */}
-        <div style={{ padding: '28px 40px' }}>
-          {!data ? (
-            <div style={{ textAlign: 'center', padding: '48px 0', color: '#a5a1b3' }}>
-              <div style={{ fontSize: 32, marginBottom: 10 }}>—</div>
-              <div style={{ fontSize: 14 }}>No notices sent via this channel in Sep 2026</div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
-              {data.map((row, i) => {
-                const pct = Math.round((row.count / max) * 100)
-                const barW = Math.max((row.count / max) * 100, 8)
-                const dropOff = i > 0 ? data[i - 1].count - row.count : null
-                const dropPct = i > 0 ? Math.round((dropOff / data[i - 1].count) * 100) : null
+        <div style={{ padding: '24px 32px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {data.map((row, i) => {
+              const pct = Math.round((row.count / max) * 100)
+              const prev = data[i - 1]
+              const drop = prev ? prev.count - row.count : null
+              const dropPct = drop ? Math.round((drop / prev.count) * 100) : null
+              const dotColor = row.type === 'success' ? '#08ca97' : row.type === 'error' ? '#fb4d3d' : '#675af9'
+              const isLast = i === data.length - 1
 
-                return (
-                  <div key={row.stage} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    {/* Drop-off connector */}
-                    {dropOff !== null && dropOff > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '3px 0', color: '#a5a1b3', fontSize: 11 }}>
-                        <div style={{ width: 1, height: 14, background: '#e6e4ef' }} />
-                        <span style={{ color: '#fb4d3d', fontWeight: 500 }}>−{dropOff.toLocaleString()} ({dropPct}% drop)</span>
+              return (
+                <div key={row.stage}>
+                  {/* Connector + drop label */}
+                  {i > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0, paddingLeft: 11 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 18 }}>
+                        <div style={{ width: 1, height: drop > 0 ? 10 : 20, background: '#d8d6e8' }} />
+                        {drop > 0 && <div style={{ width: 1, height: 10, background: '#fbc9c5' }} />}
                       </div>
-                    )}
-                    {dropOff === null && i === 0 && <div style={{ height: 0 }} />}
-                    {dropOff === 0 && <div style={{ width: 1, height: 8, background: '#e6e4ef', margin: '3px 0' }} />}
-
-                    {/* Bar */}
-                    <div style={{ width: `${barW}%`, transition: 'width 0.4s ease', position: 'relative' }}>
-                      {/* Trapezoid via clip-path */}
-                      <div style={{
-                        background: row.color,
-                        opacity: row.stage === 'Not delivered' ? 1 : 0.85 + (i * 0.02),
-                        borderRadius: 6,
-                        padding: '10px 16px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        minWidth: 120,
-                      }}>
-                        <span style={{ fontSize: 13, fontWeight: 500, color: 'white', whiteSpace: 'nowrap' }}>{row.stage}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <span style={{ fontSize: 15, fontWeight: 700, color: 'white' }}>{row.count.toLocaleString()}</span>
-                          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', minWidth: 34, textAlign: 'right' }}>{pct}%</span>
-                        </div>
-                      </div>
+                      {drop > 0 && (
+                        <span style={{ fontSize: 11, color: '#fb4d3d', fontWeight: 500, lineHeight: '20px', marginLeft: 6 }}>
+                          −{drop.toLocaleString()} &nbsp;({dropPct}% drop)
+                        </span>
+                      )}
                     </div>
+                  )}
+
+                  {/* Step row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '6px 0' }}>
+                    {/* Timeline dot */}
+                    <div style={{ flexShrink: 0, width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: dotColor, boxShadow: `0 0 0 4px ${dotColor}22` }} />
+                    </div>
+
+                    {/* Stage name */}
+                    <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: '#12012f' }}>{row.stage}</span>
+
+                    {/* Progress bar */}
+                    <div style={{ width: 160, height: 5, background: '#f0eef7', borderRadius: 3, flexShrink: 0 }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: dotColor, borderRadius: 3, transition: 'width 0.4s ease', opacity: 0.7 }} />
+                    </div>
+
+                    {/* Pct */}
+                    <span style={{ fontSize: 12, color: '#a5a1b3', width: 34, textAlign: 'right', flexShrink: 0 }}>{pct}%</span>
+
+                    {/* Count */}
+                    <span style={{ fontSize: 18, fontWeight: 700, color: dotColor, width: 64, textAlign: 'right', flexShrink: 0 }}>{row.count.toLocaleString()}</span>
                   </div>
-                )
-              })}
-            </div>
-          )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
 
